@@ -8,17 +8,71 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum AccountType {
+enum Role {
   Student
   Professor
 }
 
 model User {
-  id          String      @id @default(uuid())
+  id            String        @id @default(uuid())
+  name          String
+  email         String        @unique
+  password      String
+  accountType   Role          @default(Student)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  assignments   Assignment[]
+  groupsCreated Group[]
+  groupMembers  GroupMember[]
+  submissions   Submission[]
+}
+
+model Assignment {
+  id           String       @id @default(uuid())
+  creatorId    String
+  creator      User         @relation(fields: [creatorId], references: [id])
+  title        String
+  description  String
+  dueDate      DateTime
+  oneDriveLink String
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  submissions  Submission[]
+}
+
+model Group {
+  id          String        @id @default(uuid())
   name        String
-  email       String      @unique
-  password    String
-  accountType AccountType @default(Student)
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  creatorId   String
+  creator     User          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  members     GroupMember[]
+  submissions Submission[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model GroupMember {
+  id        String   @id @default(uuid())
+  groupId   String
+  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([groupId, userId])
+}
+
+model Submission {
+  id           String     @id @default(uuid())
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  groupId      String
+  group        Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isConfirmed  Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([assignmentId, groupId])
 }

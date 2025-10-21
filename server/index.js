@@ -3,6 +3,10 @@ import cors from "cors";
 import "dotenv/config";
 import prisma from "./config/prisma.js";
 import authRoutes from "./routes/auth.routes.js";
+import assignmentRoutes from "./routes/assignment.routes.js";
+import groupRoutes from "./routes/group.routes.js";
+import submissionRoutes from "./routes/submission.routes.js";
+import userRoutes from "./routes/user.routes.js";
 
 const app = express();
 
@@ -30,6 +34,10 @@ app.get("/", (req, res) => {
 
 // main routes
 app.use("/auth", authRoutes);
+app.use("/assignments", assignmentRoutes);
+app.use("/groups", groupRoutes);
+app.use("/submissions", submissionRoutes);
+app.use("/users", userRoutes);
 
 // global error handling middleware
 app.use((err, req, res, next) => {

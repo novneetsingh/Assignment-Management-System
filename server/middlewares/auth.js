@@ -19,7 +19,7 @@ export const auth = (req, res, next) => {
 };
 
 // Professor middleware
-export const isProfessor = async (req, res, next) => {
+export const isProfessor = (req, res, next) => {
   if (req.user.accountType !== "Professor")
     throw new ErrorResponse(
       "Access denied. This is a protected route for professors only",
