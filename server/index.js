@@ -1,7 +1,8 @@
 import express from "express";
 import cors from "cors";
 import "dotenv/config";
-import prisma from "./config/prisma";
+import prisma from "./config/prisma.js";
+import authRoutes from "./routes/auth.routes.js";
 
 const app = express();
 
@@ -26,6 +27,9 @@ app.use(express.json());
 app.get("/", (req, res) => {
   res.send("Assignment Management System API");
 });
+
+// main routes
+app.use("/auth", authRoutes);
 
 // global error handling middleware
 app.use((err, req, res, next) => {
