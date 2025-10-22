@@ -3,20 +3,21 @@ import ErrorResponse from "../utils/errorResponse.js";
 
 // Create group
 export const createGroup = async (req, res) => {
-  const { name } = req.body;
+  const { name, members } = req.body;
 
-  if (!name) {
-    throw new ErrorResponse("Please provide group name", 400);
-  }
+  if (!name || !Array.isArray(members) || members.length === 0)
+    throw new ErrorResponse("Please provide group name and members", 400);
+
+  const allMembers = [...new Set([...members, req.user.id])];
 
   const group = await prisma.group.create({
     data: {
       name,
       creatorId: req.user.id,
       members: {
-        create: {
-          userId: req.user.id,
-        },
+        create: allMembers.map((member) => ({
+          userId: member,
+        })),
       },
     },
     include: {
@@ -24,7 +25,6 @@ export const createGroup = async (req, res) => {
         include: {
           user: {
             select: {
-              id: true,
               name: true,
               email: true,
             },
@@ -35,44 +35,9 @@ export const createGroup = async (req, res) => {
   });
 
   res.status(201).json({
-    success: true,
-    message: "Group created successfully",
-    data: group,
-  });
-};
-
-// Get all groups
-export const getAllGroups = async (req, res) => {
-  const groups = await prisma.group.findMany({
-    include: {
-      creator: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-      members: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-      },
-      submissions: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-
-  res.status(200).json({
-    success: true,
-    data: groups,
+    success: group ? true : false,
+    message: group ? "Group created successfully" : "Group not created",
+    data: group ? group : null,
   });
 };
 
@@ -86,82 +51,59 @@ export const getMyGroups = async (req, res) => {
         },
       },
     },
-    include: {
-      creator: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-      members: {
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-      },
-      submissions: {
-        include: {
-          assignment: {
-            select: {
-              id: true,
-              title: true,
-              dueDate: true,
-            },
-          },
-        },
-      },
-    },
     orderBy: {
       createdAt: "desc",
     },
   });
 
   res.status(200).json({
-    success: true,
-    data: groups,
+    success: groups ? true : false,
+    message: groups ? "Groups fetched successfully" : "Groups not found",
+    count: groups ? groups.length : 0,
+    data: groups ? groups : null,
   });
 };
 
 // Get single group
 export const getGroup = async (req, res) => {
-  const { id } = req.params;
+  const { groupId } = req.params;
 
   const group = await prisma.group.findUnique({
-    where: { id },
+    where: { id: groupId, members: { some: { userId: req.user.id } } },
     include: {
-      creator: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
       members: {
         include: {
           user: {
             select: {
-              id: true,
               name: true,
               email: true,
             },
           },
         },
       },
-      submissions: {
+    },
+  });
+
+  res.status(200).json({
+    success: group ? true : false,
+    message: group ? "Group fetched successfully" : "Group not found",
+    data: group ? group : null,
+  });
+};
+
+// Add member to group
+export const addMemberToGroup = async (req, res) => {
+  const { groupId, userId } = req.params;
+
+  const group = await prisma.group.findFirst({
+    where: { id: groupId, creatorId: req.user.id },
+    include: {
+      members: {
         include: {
-          assignment: {
+          user: {
             select: {
-              id: true,
-              title: true,
-              description: true,
-              dueDate: true,
-              oneDriveLink: true,
+              name: true,
+              email: true,
             },
           },
         },
@@ -169,76 +111,28 @@ export const getGroup = async (req, res) => {
     },
   });
 
-  if (!group) {
-    throw new ErrorResponse("Group not found", 404);
-  }
+  if (!group)
+    throw new ErrorResponse("Group not found or you are not the creator", 404);
 
-  res.status(200).json({
-    success: true,
-    data: group,
-  });
-};
+  const existingMember = group.members.find(
+    (member) => member.userId === userId
+  );
 
-// Add member to group
-export const addMemberToGroup = async (req, res) => {
-  const { id } = req.params;
-  const { email } = req.body;
-
-  if (!email) {
-    throw new ErrorResponse("Please provide member email", 400);
-  }
-
-  const group = await prisma.group.findUnique({
-    where: { id },
-    include: {
-      members: true,
-    },
-  });
-
-  if (!group) {
-    throw new ErrorResponse("Group not found", 404);
-  }
-
-  // Check if user is group creator
-  if (group.creatorId !== req.user.id) {
-    throw new ErrorResponse("Only group creator can add members", 403);
-  }
-
-  // Find user by email
-  const user = await prisma.user.findUnique({
-    where: { email },
-  });
-
-  if (!user) {
-    throw new ErrorResponse("User not found", 404);
-  }
-
-  if (user.accountType !== "Student") {
-    throw new ErrorResponse("Only students can be added to groups", 400);
-  }
-
-  // Check if user is already a member
-  const existingMember = group.members.find((m) => m.userId === user.id);
-  if (existingMember) {
+  if (existingMember)
     throw new ErrorResponse("User is already a member of this group", 400);
-  }
 
-  // Add member
-  await prisma.groupMember.create({
+  const updatedGroup = await prisma.group.update({
+    where: { id: groupId },
     data: {
-      groupId: id,
-      userId: user.id,
+      members: {
+        create: { userId },
+      },
     },
-  });
-
-  const updatedGroup = await prisma.group.findUnique({
-    where: { id },
     include: {
       members: {
         include: {
           user: {
             select: {
-              id: true,
               name: true,
               email: true,
             },
@@ -252,66 +146,5 @@ export const addMemberToGroup = async (req, res) => {
     success: true,
     message: "Member added successfully",
     data: updatedGroup,
-  });
-};
-
-// Remove member from group
-export const removeMemberFromGroup = async (req, res) => {
-  const { id, memberId } = req.params;
-
-  const group = await prisma.group.findUnique({
-    where: { id },
-  });
-
-  if (!group) {
-    throw new ErrorResponse("Group not found", 404);
-  }
-
-  // Check if user is group creator
-  if (group.creatorId !== req.user.id) {
-    throw new ErrorResponse("Only group creator can remove members", 403);
-  }
-
-  // Don't allow removing the creator
-  if (memberId === group.creatorId) {
-    throw new ErrorResponse("Cannot remove group creator", 400);
-  }
-
-  await prisma.groupMember.deleteMany({
-    where: {
-      groupId: id,
-      userId: memberId,
-    },
-  });
-
-  res.status(200).json({
-    success: true,
-    message: "Member removed successfully",
-  });
-};
-
-// Delete group
-export const deleteGroup = async (req, res) => {
-  const { id } = req.params;
-
-  const group = await prisma.group.findUnique({
-    where: { id },
-  });
-
-  if (!group) {
-    throw new ErrorResponse("Group not found", 404);
-  }
-
-  if (group.creatorId !== req.user.id) {
-    throw new ErrorResponse("Only group creator can delete the group", 403);
-  }
-
-  await prisma.group.delete({
-    where: { id },
-  });
-
-  res.status(200).json({
-    success: true,
-    message: "Group deleted successfully",
   });
 };
