@@ -13,66 +13,94 @@ enum Role {
   Professor
 }
 
+enum AssignmentTarget {
+  AllStudents
+  SpecificGroups
+}
+
+enum SubmissionStatus {
+  Submitted
+  Confirmed
+}
+
 model User {
-  id            String        @id @default(uuid())
-  name          String
-  email         String        @unique
-  password      String
-  accountType   Role          @default(Student)
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  assignments   Assignment[]
-  groupsCreated Group[]
-  groupMembers  GroupMember[]
-  submissions   Submission[]
+  id          String   @id @default(uuid())
+  name        String
+  email       String   @unique
+  password    String
+  accountType Role     @default(Student)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignmentsCreated   Assignment[]
+  groupsCreated        Group[]
+  groupMemberships     GroupMember[]
+  assignmentsSubmitted Submission[]
 }
 
 model Assignment {
-  id           String       @id @default(uuid())
-  creatorId    String
-  creator      User         @relation(fields: [creatorId], references: [id])
+  id           String           @id @default(uuid())
   title        String
   description  String
   dueDate      DateTime
   oneDriveLink String
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  targetType   AssignmentTarget @default(AllStudents)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  creatorId String
+  creator   User   @relation(fields: [creatorId], references: [id])
+
   submissions  Submission[]
+  targetGroups AssignmentGroup[]
 }
 
 model Group {
-  id          String        @id @default(uuid())
-  name        String
-  creatorId   String
-  creator     User          @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  creatorId String
+  creator   User   @relation(fields: [creatorId], references: [id])
+
   members     GroupMember[]
   submissions Submission[]
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  assignments AssignmentGroup[]
 }
 
 model GroupMember {
   id        String   @id @default(uuid())
-  groupId   String
-  group     Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 
-  @@unique([groupId, userId])
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id])
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
 }
 
 model Submission {
-  id           String     @id @default(uuid())
-  assignmentId String
-  assignment   Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
-  groupId      String
-  group        Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
-  userId       String
-  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  isConfirmed  Boolean    @default(false)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  id        String           @id @default(uuid())
+  createdAt DateTime         @default(now())
+  status    SubmissionStatus @default(Submitted)
 
-  @@unique([assignmentId, groupId])
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+
+  groupId String?
+  group   Group?  @relation(fields: [groupId], references: [id])
+
+  userId String?
+  user   User?   @relation(fields: [userId], references: [id])
+}
+
+model AssignmentGroup {
+  id String @id @default(uuid())
+
+  assignmentId String
+  assignment   Assignment @relation(fields: [assignmentId], references: [id])
+
+  groupId String
+  group   Group  @relation(fields: [groupId], references: [id])
 }

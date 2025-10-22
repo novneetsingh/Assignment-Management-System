@@ -18,6 +18,17 @@ export const auth = (req, res, next) => {
   next();
 };
 
+// Student middleware
+export const isStudent = (req, res, next) => {
+  if (req.user.accountType !== "Student")
+    throw new ErrorResponse(
+      "Access denied. This is a protected route for students only",
+      403
+    );
+
+  next();
+};
+
 // Professor middleware
 export const isProfessor = (req, res, next) => {
   if (req.user.accountType !== "Professor")
