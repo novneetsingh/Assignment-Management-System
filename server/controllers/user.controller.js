@@ -1,5 +1,4 @@
 import prisma from "../config/prisma.js";
-import ErrorResponse from "../utils/errorResponse.js";
 
 // Get current user profile
 export const getMe = async (req, res) => {
@@ -12,21 +11,17 @@ export const getMe = async (req, res) => {
       name: true,
       email: true,
       accountType: true,
-      createdAt: true,
     },
   });
 
-  if (!user) {
-    throw new ErrorResponse("User not found", 404);
-  }
-
   res.status(200).json({
-    success: true,
-    data: user,
+    success: user ? true : false,
+    message: user ? "User found" : "User not found",
+    data: user ? user : null,
   });
 };
 
-// Get all students (for adding to groups)
+// Get all students
 export const getAllStudents = async (req, res) => {
   const students = await prisma.user.findMany({
     where: {
@@ -43,7 +38,8 @@ export const getAllStudents = async (req, res) => {
   });
 
   res.status(200).json({
-    success: true,
-    data: students,
+    success: students ? true : false,
+    message: students ? "Students found" : "Students not found",
+    data: students ? students : null,
   });
 };

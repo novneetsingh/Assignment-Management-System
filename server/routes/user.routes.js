@@ -1,10 +1,13 @@
 import { Router } from "express";
 import { getMe, getAllStudents } from "../controllers/user.controller.js";
-import { auth } from "../middlewares/auth.js";
+import { auth, isStudent } from "../middlewares/auth.js";
 
 const userRoutes = Router();
 
+// /users/me
 userRoutes.get("/me", auth, getMe);
-userRoutes.get("/students", auth, getAllStudents);
+
+// /users/students
+userRoutes.get("/students", auth, isStudent, getAllStudents);
 
 export default userRoutes;
