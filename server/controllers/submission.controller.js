@@ -1,262 +1,121 @@
 import prisma from "../config/prisma.js";
 import ErrorResponse from "../utils/errorResponse.js";
 
-// Submit assignment (initial submission)
+// Submit assignment by group or individual
 export const submitAssignment = async (req, res) => {
   const { assignmentId, groupId } = req.body;
-
-  if (!assignmentId || !groupId) {
-    throw new ErrorResponse("Please provide assignment ID and group ID", 400);
-  }
+  const userId = req.user.id;
 
   // Check if assignment exists
   const assignment = await prisma.assignment.findUnique({
     where: { id: assignmentId },
   });
 
-  if (!assignment) {
-    throw new ErrorResponse("Assignment not found", 404);
-  }
+  if (!assignment) throw new ErrorResponse("Assignment not found", 404);
 
   // Check if group exists and user is a member
-  const group = await prisma.group.findFirst({
-    where: {
-      id: groupId,
-      members: {
-        some: {
-          userId: req.user.id,
+  if (groupId) {
+    const group = await prisma.group.findFirst({
+      where: {
+        id: groupId,
+        members: {
+          some: {
+            userId,
+          },
         },
       },
-    },
-  });
+    });
 
-  if (!group) {
-    throw new ErrorResponse("Group not found or you are not a member", 404);
-  }
+    if (!group)
+      throw new ErrorResponse("Group not found or you are not a member", 404);
 
-  // Check if submission already exists
-  const existingSubmission = await prisma.submission.findUnique({
-    where: {
-      assignmentId_groupId: {
+    const existingSubmission = await prisma.submission.findFirst({
+      where: {
         assignmentId,
         groupId,
       },
-    },
-  });
+    });
 
-  if (existingSubmission) {
-    throw new ErrorResponse("Submission already exists for this group", 400);
+    if (existingSubmission)
+      throw new ErrorResponse("Submission already exists for this group", 400);
+  } else {
+    const existingSubmission = await prisma.submission.findFirst({
+      where: {
+        assignmentId,
+        userId,
+      },
+    });
+
+    if (existingSubmission)
+      throw new ErrorResponse(
+        "Submission already exists for this assignment by you",
+        400
+      );
   }
 
   const submission = await prisma.submission.create({
     data: {
       assignmentId,
       groupId,
-      userId: req.user.id,
-      isConfirmed: false,
+      userId,
     },
   });
 
   res.status(201).json({
-    success: true,
-    message: "Assignment submitted successfully. Please confirm submission.",
-    data: submission,
+    success: submission ? true : false,
+    message: submission
+      ? "Assignment submitted successfully."
+      : "Assignment not submitted.",
+    data: submission ? submission : null,
   });
 };
 
-// Confirm submission (two-step verification)
+// Confirm submission by professor
 export const confirmSubmission = async (req, res) => {
-  const { id } = req.params;
+  const { submissionId, assignmentId } = req.body;
 
-  const submission = await prisma.submission.findUnique({
-    where: { id },
-    include: {
-      group: {
-        include: {
-          members: true,
-        },
-      },
-    },
+  // Check if assignment exists and creator is current user
+  const assignment = await prisma.assignment.findFirst({
+    where: { id: assignmentId, creatorId: req.user.id },
   });
 
-  if (!submission) {
-    throw new ErrorResponse("Submission not found", 404);
-  }
-
-  // Check if user is a member of the group
-  const isMember = submission.group.members.some((m) => m.userId === req.user.id);
-  if (!isMember) {
-    throw new ErrorResponse("You are not a member of this group", 403);
-  }
-
-  if (submission.isConfirmed) {
-    throw new ErrorResponse("Submission already confirmed", 400);
-  }
+  if (!assignment)
+    throw new ErrorResponse(
+      "Assignment not found or you are not authorized",
+      404
+    );
 
   const updatedSubmission = await prisma.submission.update({
-    where: { id },
+    where: { id: submissionId },
     data: {
-      isConfirmed: true,
+      status: "Confirmed",
     },
   });
 
   res.status(200).json({
-    success: true,
-    message: "Submission confirmed successfully",
-    data: updatedSubmission,
+    success: updatedSubmission ? true : false,
+    message: updatedSubmission
+      ? "Submission confirmed successfully."
+      : "Submission not confirmed.",
+    data: updatedSubmission ? updatedSubmission : null,
   });
 };
 
-// Get all submissions
-export const getAllSubmissions = async (req, res) => {
+// Get all submissions by assignment id
+export const getAllSubmissionsByAssignmentId = async (req, res) => {
   const submissions = await prisma.submission.findMany({
-    include: {
-      assignment: {
-        select: {
-          id: true,
-          title: true,
-          dueDate: true,
-        },
-      },
-      group: {
-        select: {
-          id: true,
-          name: true,
-          members: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-          },
-        },
-      },
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-    },
+    where: { assignmentId: req.params.assignmentId },
     orderBy: {
       createdAt: "desc",
     },
   });
 
   res.status(200).json({
-    success: true,
-    data: submissions,
-  });
-};
-
-// Get submissions for a specific assignment
-export const getSubmissionsByAssignment = async (req, res) => {
-  const { assignmentId } = req.params;
-
-  const submissions = await prisma.submission.findMany({
-    where: {
-      assignmentId,
-    },
-    include: {
-      group: {
-        select: {
-          id: true,
-          name: true,
-          members: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-          },
-        },
-      },
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-
-  res.status(200).json({
-    success: true,
-    data: submissions,
-  });
-};
-
-// Get submissions for user's groups
-export const getMyGroupSubmissions = async (req, res) => {
-  const userGroups = await prisma.group.findMany({
-    where: {
-      members: {
-        some: {
-          userId: req.user.id,
-        },
-      },
-    },
-    select: {
-      id: true,
-    },
-  });
-
-  const groupIds = userGroups.map((g) => g.id);
-
-  const submissions = await prisma.submission.findMany({
-    where: {
-      groupId: {
-        in: groupIds,
-      },
-    },
-    include: {
-      assignment: {
-        select: {
-          id: true,
-          title: true,
-          description: true,
-          dueDate: true,
-          oneDriveLink: true,
-        },
-      },
-      group: {
-        select: {
-          id: true,
-          name: true,
-          members: {
-            include: {
-              user: {
-                select: {
-                  id: true,
-                  name: true,
-                  email: true,
-                },
-              },
-            },
-          },
-        },
-      },
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-  });
-
-  res.status(200).json({
-    success: true,
-    data: submissions,
+    success: submissions ? true : false,
+    message: submissions
+      ? "Submissions fetched successfully."
+      : "Submissions not fetched.",
+    count: submissions ? submissions.length : 0,
+    data: submissions ? submissions : null,
   });
 };
