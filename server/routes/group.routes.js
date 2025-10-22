@@ -4,8 +4,9 @@ import {
   getMyGroups,
   getGroup,
   addMemberToGroup,
+  getAllGroups,
 } from "../controllers/group.controller.js";
-import { auth, isStudent } from "../middlewares/auth.js";
+import { auth, isStudent, isProfessor } from "../middlewares/auth.js";
 
 const groupRoutes = Router();
 
@@ -20,5 +21,8 @@ groupRoutes.get("/:id", auth, isStudent, getGroup);
 
 // /groups/:id/members/:userId
 groupRoutes.post(":groupId/members/:userId", auth, isStudent, addMemberToGroup);
+
+// /groups/all
+groupRoutes.get("/all", auth, isProfessor, getAllGroups);
 
 export default groupRoutes;

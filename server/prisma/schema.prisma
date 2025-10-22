@@ -13,11 +13,6 @@ enum Role {
   Professor
 }
 
-enum AssignmentTarget {
-  AllStudents
-  SpecificGroups
-}
-
 enum SubmissionStatus {
   Submitted
   Confirmed
@@ -39,20 +34,18 @@ model User {
 }
 
 model Assignment {
-  id           String           @id @default(uuid())
+  id           String   @id @default(uuid())
   title        String
   description  String
   dueDate      DateTime
   oneDriveLink String
-  targetType   AssignmentTarget @default(AllStudents)
-  createdAt    DateTime         @default(now())
-  updatedAt    DateTime         @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   creatorId String
   creator   User   @relation(fields: [creatorId], references: [id])
 
-  submissions  Submission[]
-  targetGroups AssignmentGroup[]
+  submissions Submission[]
 }
 
 model Group {
@@ -66,7 +59,6 @@ model Group {
 
   members     GroupMember[]
   submissions Submission[]
-  assignments AssignmentGroup[]
 }
 
 model GroupMember {
@@ -93,14 +85,4 @@ model Submission {
 
   userId String?
   user   User?   @relation(fields: [userId], references: [id])
-}
-
-model AssignmentGroup {
-  id String @id @default(uuid())
-
-  assignmentId String
-  assignment   Assignment @relation(fields: [assignmentId], references: [id])
-
-  groupId String
-  group   Group  @relation(fields: [groupId], references: [id])
 }

@@ -4,21 +4,34 @@ import {
   getAllAssignments,
   getAssignment,
   updateAssignment,
-  deleteAssignment,
   getAssignmentAnalytics,
+  getAssignmentsByProfessor,
 } from "../controllers/assignment.controller.js";
-import { auth, isProfessor } from "../middlewares/auth.js";
+import { auth, isProfessor, isStudent } from "../middlewares/auth.js";
 
 const assignmentRoutes = Router();
 
-// Professor only routes
+// /assignments/
 assignmentRoutes.post("/", auth, isProfessor, createAssignment);
-assignmentRoutes.put("/:id", auth, isProfessor, updateAssignment);
-assignmentRoutes.delete("/:id", auth, isProfessor, deleteAssignment);
+
+// /assignments/:assignmentId
+assignmentRoutes.put("/:assignmentId", auth, isProfessor, updateAssignment);
+
+// /assignments/analytics
 assignmentRoutes.get("/analytics", auth, isProfessor, getAssignmentAnalytics);
 
-// All authenticated users
-assignmentRoutes.get("/", auth, getAllAssignments);
-assignmentRoutes.get("/:id", auth, getAssignment);
+// /assignments
+assignmentRoutes.get("/", auth, isStudent, getAllAssignments);
+
+// /assignments/:assignmentId
+assignmentRoutes.get("/:assignmentId", auth, getAssignment);
+
+// /assignments/professor
+assignmentRoutes.get(
+  "/professor",
+  auth,
+  isProfessor,
+  getAssignmentsByProfessor
+);
 
 export default assignmentRoutes;

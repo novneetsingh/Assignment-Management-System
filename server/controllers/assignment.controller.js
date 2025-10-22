@@ -1,52 +1,55 @@
 import prisma from "../config/prisma.js";
 import ErrorResponse from "../utils/errorResponse.js";
 
-// Create assignment (Professor only)
+// Create assignment
 export const createAssignment = async (req, res) => {
   const { title, description, dueDate, oneDriveLink } = req.body;
 
-  if (!title || !description || !dueDate || !oneDriveLink) {
+  if (!title || !description || !dueDate || !oneDriveLink)
     throw new ErrorResponse("Please provide all fields", 400);
-  }
 
   const assignment = await prisma.assignment.create({
     data: {
       title,
       description,
-      dueDate: new Date(dueDate),
+      dueDate,
       oneDriveLink,
       creatorId: req.user.id,
     },
   });
 
   res.status(201).json({
-    success: true,
-    message: "Assignment created successfully",
-    data: assignment,
+    success: assignment ? true : false,
+    message: assignment
+      ? "Assignment created successfully"
+      : "Assignment not created",
+    data: assignment ? assignment : null,
   });
 };
 
 // Get all assignments
 export const getAllAssignments = async (req, res) => {
   const assignments = await prisma.assignment.findMany({
-    include: {
-      creator: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-      submissions: {
-        include: {
-          group: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  res.status(200).json({
+    success: assignments ? true : false,
+    message: assignments
+      ? "Assignments fetched successfully"
+      : "Assignments not fetched",
+    count: assignments ? assignments.length : 0,
+    data: assignments ? assignments : null,
+  });
+};
+
+// get assignments by professor
+export const getAssignmentsByProfessor = async (req, res) => {
+  const assignments = await prisma.assignment.findMany({
+    where: {
+      creatorId: req.user.id,
     },
     orderBy: {
       createdAt: "desc",
@@ -54,176 +57,107 @@ export const getAllAssignments = async (req, res) => {
   });
 
   res.status(200).json({
-    success: true,
-    data: assignments,
+    success: assignments ? true : false,
+    message: assignments
+      ? "Assignments fetched successfully"
+      : "Assignments not fetched",
+    count: assignments ? assignments.length : 0,
+    data: assignments ? assignments : null,
   });
 };
 
 // Get single assignment
 export const getAssignment = async (req, res) => {
-  const { id } = req.params;
+  const { assignmentId } = req.params;
 
   const assignment = await prisma.assignment.findUnique({
-    where: { id },
-    include: {
-      creator: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
-        },
-      },
-      submissions: {
-        include: {
-          group: {
-            select: {
-              id: true,
-              name: true,
-              members: {
-                include: {
-                  user: {
-                    select: {
-                      id: true,
-                      name: true,
-                      email: true,
-                    },
-                  },
-                },
-              },
-            },
-          },
-          user: {
-            select: {
-              id: true,
-              name: true,
-              email: true,
-            },
-          },
-        },
-      },
-    },
+    where: { id: assignmentId },
   });
 
-  if (!assignment) {
-    throw new ErrorResponse("Assignment not found", 404);
-  }
-
   res.status(200).json({
-    success: true,
-    data: assignment,
+    success: assignment ? true : false,
+    message: assignment
+      ? "Assignment fetched successfully"
+      : "Assignment not fetched",
+    data: assignment ? assignment : null,
   });
 };
 
-// Update assignment (Professor only)
+// Update assignment
 export const updateAssignment = async (req, res) => {
-  const { id } = req.params;
+  const { assignmentId } = req.params;
   const { title, description, dueDate, oneDriveLink } = req.body;
 
-  const assignment = await prisma.assignment.findUnique({
-    where: { id },
+  const assignment = await prisma.assignment.findFirst({
+    where: { id: assignmentId, creatorId: req.user.id },
   });
 
-  if (!assignment) {
-    throw new ErrorResponse("Assignment not found", 404);
-  }
-
-  if (assignment.creatorId !== req.user.id) {
+  if (!assignment)
     throw new ErrorResponse(
-      "You are not authorized to update this assignment",
-      403
+      "Assignment not found or you are not authorized",
+      404
     );
-  }
 
   const updatedAssignment = await prisma.assignment.update({
-    where: { id },
+    where: { id: assignmentId },
     data: {
       ...(title && { title }),
       ...(description && { description }),
-      ...(dueDate && { dueDate: new Date(dueDate) }),
+      ...(dueDate && { dueDate }),
       ...(oneDriveLink && { oneDriveLink }),
     },
   });
 
   res.status(200).json({
-    success: true,
-    message: "Assignment updated successfully",
-    data: updatedAssignment,
+    success: updatedAssignment ? true : false,
+    message: updatedAssignment
+      ? "Assignment updated successfully"
+      : "Assignment not updated",
+    data: updatedAssignment ? updatedAssignment : null,
   });
 };
 
-// Delete assignment (Professor only)
-export const deleteAssignment = async (req, res) => {
-  const { id } = req.params;
-
-  const assignment = await prisma.assignment.findUnique({
-    where: { id },
-  });
-
-  if (!assignment) {
-    throw new ErrorResponse("Assignment not found", 404);
-  }
-
-  if (assignment.creatorId !== req.user.id) {
-    throw new ErrorResponse(
-      "You are not authorized to delete this assignment",
-      403
-    );
-  }
-
-  await prisma.assignment.delete({
-    where: { id },
-  });
-
-  res.status(200).json({
-    success: true,
-    message: "Assignment deleted successfully",
-  });
-};
-
-// Get assignment analytics (Professor only)
+// Get assignment analytics
 export const getAssignmentAnalytics = async (req, res) => {
-  const totalAssignments = await prisma.assignment.count();
+  const professorId = req.user.id;
 
-  const totalGroups = await prisma.group.count();
-
-  const totalSubmissions = await prisma.submission.count();
-
-  const confirmedSubmissions = await prisma.submission.count({
+  // get all assignments created by professor
+  const assignments = await prisma.assignment.findMany({
     where: {
-      isConfirmed: true,
+      creatorId: professorId,
     },
   });
 
-  const assignments = await prisma.assignment.findMany({
-    include: {
-      submissions: {
-        include: {
-          group: {
-            select: {
-              name: true,
-            },
-          },
-        },
+  // get all submissions where assignmentId is in assignments
+  const submissions = await prisma.submission.findMany({
+    where: {
+      assignmentId: {
+        in: assignments.map((assignment) => assignment.id),
       },
     },
   });
 
-  const assignmentStats = assignments.map((assignment) => ({
-    id: assignment.id,
-    title: assignment.title,
-    totalSubmissions: assignment.submissions.length,
-    confirmedSubmissions: assignment.submissions.filter((s) => s.isConfirmed)
-      .length,
-  }));
+  const totalSubmissions = submissions.length;
+
+  const confirmedSubmissions = submissions.filter(
+    (submission) => submission.status === "Confirmed"
+  ).length;
+
+  const groupSubmissions = submissions.filter(
+    (submission) => submission.groupId
+  ).length;
 
   res.status(200).json({
     success: true,
+    message: "Assignment analytics fetched successfully",
     data: {
-      totalAssignments,
-      totalGroups,
+      totalAssignments: assignments.length,
       totalSubmissions,
       confirmedSubmissions,
-      assignmentStats,
+      pendingSubmissions: totalSubmissions - confirmedSubmissions,
+      groupSubmissions,
+      individualSubmissions: totalSubmissions - groupSubmissions,
+      percentageConfirmed: (confirmedSubmissions / totalSubmissions) * 100,
     },
   });
 };

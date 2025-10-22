@@ -148,3 +148,19 @@ export const addMemberToGroup = async (req, res) => {
     data: updatedGroup,
   });
 };
+
+// get all groups for professor
+export const getAllGroups = async (req, res) => {
+  const groups = await prisma.group.findMany({
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  res.status(200).json({
+    success: groups ? true : false,
+    message: groups ? "Groups fetched successfully" : "Groups not found",
+    count: groups ? groups.length : 0,
+    data: groups ? groups : null,
+  });
+};
