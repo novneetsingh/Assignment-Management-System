@@ -16,6 +16,9 @@ const ProfessorDashboard = () => {
   const { user, logout } = useContext(AuthContext);
   const [activeTab, setActiveTab] = useState("assignments");
   const [assignments, setAssignments] = useState([]);
+  const [myAssignments, setMyAssignments] = useState([]);
+  const [selectedAssignmentSubmissions, setSelectedAssignmentSubmissions] =
+    useState(null);
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -39,6 +42,9 @@ const ProfessorDashboard = () => {
       if (activeTab === "assignments") {
         const res = await axios.get(`/assignments`, { headers });
         setAssignments(res.data.data);
+      } else if (activeTab === "my-assignments") {
+        const res = await axios.get(`/assignments/professor`, { headers });
+        setMyAssignments(res.data.data);
       } else if (activeTab === "analytics") {
         const res = await axios.get(`/assignments/analytics`, { headers });
         setAnalytics(res.data.data);
@@ -83,19 +89,40 @@ const ProfessorDashboard = () => {
     setShowAssignmentModal(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this assignment?"))
-      return;
+  const viewAssignmentSubmissions = async (assignmentId) => {
     try {
       const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
-      await axios.delete(`/assignments/${id}`, {
-        headers,
+      const res = await axios.get(`/submissions/assignment/${assignmentId}`, {
+        headers: { Authorization: `Bearer ${token}` },
       });
-      toast.success("Assignment deleted successfully!");
+      setSelectedAssignmentSubmissions(res.data.data);
+    } catch (error) {
+      toast.error("Failed to fetch submissions");
+    }
+  };
+
+  const confirmSubmission = async (submissionId) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.patch(
+        `/submissions/${submissionId}/confirm`,
+        {},
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      toast.success("Submission confirmed successfully!");
+      // Refresh the submissions
+      if (selectedAssignmentSubmissions) {
+        viewAssignmentSubmissions(
+          selectedAssignmentSubmissions[0]?.assignmentId
+        );
+      }
       fetchData();
     } catch (error) {
-      toast.error("Failed to delete assignment");
+      toast.error(
+        error.response?.data?.message || "Failed to confirm submission"
+      );
     }
   };
 
@@ -130,7 +157,17 @@ const ProfessorDashboard = () => {
                 : "bg-white text-gray-600 hover:bg-gray-50"
             }`}
           >
-            <FiBook /> Assignments
+            <FiBook /> All Assignments
+          </button>
+          <button
+            onClick={() => setActiveTab("my-assignments")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-md ${
+              activeTab === "my-assignments"
+                ? "bg-blue-600 text-white"
+                : "bg-white text-gray-600 hover:bg-gray-50"
+            }`}
+          >
+            <FiBook /> My Assignments
           </button>
           <button
             onClick={() => setActiveTab("analytics")}
@@ -198,6 +235,96 @@ const ProfessorDashboard = () => {
                       </div>
                       <div className="flex gap-2">
                         <button
+                          onClick={() =>
+                            viewAssignmentSubmissions(assignment.id)
+                          }
+                          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                        >
+                          View Submissions
+                        </button>
+                        <button
+                          onClick={() => handleEdit(assignment)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-md"
+                        >
+                          <FiEdit />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(assignment.id)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-md"
+                        >
+                          <FiTrash2 />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* My Assignments Tab */}
+        {activeTab === "my-assignments" && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold">My Assignments</h2>
+              <button
+                onClick={() => {
+                  setEditingAssignment(null);
+                  reset();
+                  setShowAssignmentModal(true);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+              >
+                <FiPlus className="inline mr-2" />
+                Create Assignment
+              </button>
+            </div>
+            {loading ? (
+              <p>Loading...</p>
+            ) : (
+              <div className="grid gap-4">
+                {myAssignments.map((assignment) => (
+                  <div
+                    key={assignment.id}
+                    className="bg-white p-6 rounded-lg shadow"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="text-lg font-semibold">
+                          {assignment.title}
+                        </h3>
+                        <p className="text-gray-600 mt-2">
+                          {assignment.description}
+                        </p>
+                        <p className="text-sm text-gray-500 mt-2">
+                          Due:{" "}
+                          {new Date(assignment.dueDate).toLocaleDateString()}
+                        </p>
+                        <a
+                          href={assignment.oneDriveLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline text-sm mt-2 inline-block"
+                        >
+                          OneDrive Link
+                        </a>
+                        <div className="mt-4">
+                          <p className="text-sm font-medium">
+                            Submissions: {assignment.submissions?.length || 0}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() =>
+                            viewAssignmentSubmissions(assignment.id)
+                          }
+                          className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                        >
+                          View Submissions
+                        </button>
+                        <button
                           onClick={() => handleEdit(assignment)}
                           className="p-2 text-blue-600 hover:bg-blue-50 rounded-md"
                         >
@@ -234,9 +361,9 @@ const ProfessorDashboard = () => {
                     </p>
                   </div>
                   <div className="bg-white p-6 rounded-lg shadow">
-                    <h3 className="text-gray-500 text-sm">Total Groups</h3>
+                    <h3 className="text-gray-500 text-sm">Group Submissions</h3>
                     <p className="text-3xl font-bold text-green-600 mt-2">
-                      {analytics.totalGroups}
+                      {analytics.groupSubmissions}
                     </p>
                   </div>
                   <div className="bg-white p-6 rounded-lg shadow">
@@ -247,11 +374,299 @@ const ProfessorDashboard = () => {
                   </div>
                   <div className="bg-white p-6 rounded-lg shadow">
                     <h3 className="text-gray-500 text-sm">
-                      Confirmed Submissions
+                      Individual Submissions
                     </h3>
-                    <p className="text-3xl font-bold text-orange-600 mt-2">
-                      {analytics.confirmedSubmissions}
+                    <p className="text-3xl font-bold text-indigo-600 mt-2">
+                      {analytics.individualSubmissions}
                     </p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-lg shadow mt-6">
+                  <h3 className="text-lg font-bold mb-4">Submission Summary</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-600">
+                        {analytics.confirmedSubmissions}
+                      </p>
+                      <p className="text-sm text-gray-500">Confirmed</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-yellow-600">
+                        {analytics.pendingSubmissions}
+                      </p>
+                      <p className="text-sm text-gray-500">Pending</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-blue-600">
+                        {analytics.percentageConfirmed.toFixed(1)}%
+                      </p>
+                      <p className="text-sm text-gray-500">Confirmation Rate</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-lg shadow">
+                  <h3 className="text-lg font-bold mb-4">
+                    Assignment-wise Statistics
+                  </h3>
+                  <div className="space-y-4">
+                    {analytics.assignmentStats?.map((stat) => (
+                      <div key={stat.id} className="border-b pb-4">
+                        <h4 className="font-medium">{stat.title}</h4>
+                        <div className="mt-2 flex gap-4 text-sm">
+                          <span className="text-gray-600">
+                            Total Submissions: {stat.totalSubmissions}
+                          </span>
+                          <span className="text-green-600">
+                            Confirmed: {stat.confirmedSubmissions}
+                          </span>
+                        </div>
+                        <div className="mt-2 bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-green-600 h-2 rounded-full"
+                            style={{
+                              width: `${
+                                stat.totalSubmissions > 0
+                                  ? (stat.confirmedSubmissions /
+                                      stat.totalSubmissions) *
+                                    100
+                                  : 0
+                              }%`,
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+
+        {/* Submissions View */}
+        {selectedAssignmentSubmissions && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <button
+                  onClick={() => setSelectedAssignmentSubmissions(null)}
+                  className="mb-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                >
+                  ← Back to Assignments
+                </button>
+                <h2 className="text-xl font-bold">
+                  Submissions for:{" "}
+                  {selectedAssignmentSubmissions[0]?.assignment?.title}
+                </h2>
+              </div>
+            </div>
+            {loading ? (
+              <p>Loading submissions...</p>
+            ) : (
+              <div className="space-y-4">
+                {selectedAssignmentSubmissions.map((submission) => (
+                  <div
+                    key={submission.id}
+                    className="bg-white p-6 rounded-lg shadow"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-4 mb-2">
+                          <h3 className="text-lg font-semibold">
+                            {submission.user.name}
+                          </h3>
+                          <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                            {submission.user.email}
+                          </span>
+                          {submission.group && (
+                            <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                              Group: {submission.group.name}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500 mb-2">
+                          Submitted:{" "}
+                          {new Date(submission.createdAt).toLocaleDateString()}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2 py-1 text-sm rounded-full ${
+                              submission.status === "Confirmed"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {submission.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {submission.status !== "Confirmed" && (
+                          <button
+                            onClick={() => confirmSubmission(submission.id)}
+                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                          >
+                            Confirm
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {selectedAssignmentSubmissions.length === 0 && (
+                  <div className="bg-white p-6 rounded-lg shadow text-center">
+                    <p className="text-gray-500">
+                      No submissions yet for this assignment.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Submissions View */}
+        {selectedAssignmentSubmissions && (
+          <div>
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <button
+                  onClick={() => setSelectedAssignmentSubmissions(null)}
+                  className="mb-2 px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700"
+                >
+                  ← Back to Assignments
+                </button>
+                <h2 className="text-xl font-bold">
+                  Submissions for:{" "}
+                  {selectedAssignmentSubmissions[0]?.assignment?.title}
+                </h2>
+              </div>
+            </div>
+            {loading ? (
+              <p>Loading submissions...</p>
+            ) : (
+              <div className="space-y-4">
+                {selectedAssignmentSubmissions.map((submission) => (
+                  <div
+                    key={submission.id}
+                    className="bg-white p-6 rounded-lg shadow"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-4 mb-2">
+                          <h3 className="text-lg font-semibold">
+                            {submission.user.name}
+                          </h3>
+                          <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
+                            {submission.user.email}
+                          </span>
+                          {submission.group && (
+                            <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
+                              Group: {submission.group.name}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500 mb-2">
+                          Submitted:{" "}
+                          {new Date(submission.createdAt).toLocaleDateString()}
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2 py-1 text-sm rounded-full ${
+                              submission.status === "Confirmed"
+                                ? "bg-green-100 text-green-800"
+                                : "bg-yellow-100 text-yellow-800"
+                            }`}
+                          >
+                            {submission.status}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {submission.status !== "Confirmed" && (
+                          <button
+                            onClick={() => confirmSubmission(submission.id)}
+                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
+                          >
+                            Confirm
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {selectedAssignmentSubmissions.length === 0 && (
+                  <div className="bg-white p-6 rounded-lg shadow text-center">
+                    <p className="text-gray-500">
+                      No submissions yet for this assignment.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Analytics Tab */}
+        {activeTab === "analytics" && (
+          <div>
+            <h2 className="text-xl font-bold mb-4">Analytics Dashboard</h2>
+            {loading ? (
+              <p>Loading...</p>
+            ) : analytics ? (
+              <div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                  <div className="bg-white p-6 rounded-lg shadow">
+                    <h3 className="text-gray-500 text-sm">Total Assignments</h3>
+                    <p className="text-3xl font-bold text-blue-600 mt-2">
+                      {analytics.totalAssignments}
+                    </p>
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow">
+                    <h3 className="text-gray-500 text-sm">Group Submissions</h3>
+                    <p className="text-3xl font-bold text-green-600 mt-2">
+                      {analytics.groupSubmissions}
+                    </p>
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow">
+                    <h3 className="text-gray-500 text-sm">Total Submissions</h3>
+                    <p className="text-3xl font-bold text-purple-600 mt-2">
+                      {analytics.totalSubmissions}
+                    </p>
+                  </div>
+                  <div className="bg-white p-6 rounded-lg shadow">
+                    <h3 className="text-gray-500 text-sm">
+                      Individual Submissions
+                    </h3>
+                    <p className="text-3xl font-bold text-indigo-600 mt-2">
+                      {analytics.individualSubmissions}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="bg-white p-6 rounded-lg shadow mt-6">
+                  <h3 className="text-lg font-bold mb-4">Submission Summary</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-600">
+                        {analytics.confirmedSubmissions}
+                      </p>
+                      <p className="text-sm text-gray-500">Confirmed</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-yellow-600">
+                        {analytics.pendingSubmissions}
+                      </p>
+                      <p className="text-sm text-gray-500">Pending</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-blue-600">
+                        {analytics.percentageConfirmed.toFixed(1)}%
+                      </p>
+                      <p className="text-sm text-gray-500">Confirmation Rate</p>
+                    </div>
                   </div>
                 </div>
 

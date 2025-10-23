@@ -216,15 +216,24 @@ const StudentDashboard = () => {
                       >
                         OneDrive Link
                       </a>
-                      <button
-                        onClick={() => {
-                          setSelectedAssignment(assignment);
-                          setShowSubmitModal(true);
-                        }}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                      >
-                        Submit Assignment
-                      </button>
+                      {assignment.isSubmitted ? (
+                        <button
+                          className="px-4 py-2 bg-gray-500 text-white rounded-md cursor-not-allowed"
+                          disabled
+                        >
+                          Already Submitted
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setSelectedAssignment(assignment);
+                            setShowSubmitModal(true);
+                          }}
+                          className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                        >
+                          Submit Assignment
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -293,7 +302,7 @@ const StudentDashboard = () => {
                             className="text-sm text-gray-600 flex items-center gap-2"
                           >
                             {sub.assignment.title} -{" "}
-                            {sub.isConfirmed ? (
+                            {sub.status === "Confirmed" ? (
                               <span className="text-green-600 flex items-center gap-1">
                                 <FiCheckCircle /> Confirmed
                               </span>
