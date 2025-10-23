@@ -35,17 +35,33 @@ export const getAllAssignments = async (req, res) => {
     },
   });
 
+  //check if assignments are already submitted by current user
+  const submissions = await prisma.submission.findMany({
+    where: {
+      assignmentId: {
+        in: assignments.map((assignment) => assignment.id),
+      },
+      userId: req.user.id,
+    },
+  });
+
+  assignments.forEach((assignment) => {
+    assignment.isSubmitted = submissions.some(
+      (submission) => submission.assignmentId === assignment.id
+    );
+  });
+
   res.status(200).json({
     success: assignments ? true : false,
     message: assignments
       ? "Assignments fetched successfully"
       : "Assignments not fetched",
     count: assignments ? assignments.length : 0,
-    data: assignments ? assignments : null,
+    data: assignments ? assignments : [],
   });
 };
 
-// get assignments by professor
+// get all assignments by professor id
 export const getAssignmentsByProfessor = async (req, res) => {
   const assignments = await prisma.assignment.findMany({
     where: {
@@ -62,7 +78,7 @@ export const getAssignmentsByProfessor = async (req, res) => {
       ? "Assignments fetched successfully"
       : "Assignments not fetched",
     count: assignments ? assignments.length : 0,
-    data: assignments ? assignments : null,
+    data: assignments ? assignments : [],
   });
 };
 
@@ -73,6 +89,13 @@ export const getAssignment = async (req, res) => {
   const assignment = await prisma.assignment.findUnique({
     where: { id: assignmentId },
   });
+
+  //check if assignment is already submitted by current user
+  const submission = await prisma.submission.findFirst({
+    where: { assignmentId: assignmentId, userId: req.user.id },
+  });
+
+  assignment.isSubmitted = submission ? true : false;
 
   res.status(200).json({
     success: assignment ? true : false,
