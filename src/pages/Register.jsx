@@ -1,14 +1,12 @@
-import { useState, useContext } from "react";
+import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
-import { AuthContext } from "../context/AuthContext";
 import toast from "react-hot-toast";
 import { FiUserPlus, FiUser, FiMail, FiLock, FiUsers } from "react-icons/fi";
 import axios from "axios";
 
 const Register = () => {
   const [loading, setLoading] = useState(false);
-  const { setUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const {
     register,

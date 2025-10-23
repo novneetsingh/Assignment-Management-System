@@ -3,8 +3,8 @@ import { useContext } from "react";
 import { AuthContext } from "./context/AuthContext";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import StudentDashboard from "./pages/StudentDashboard";
-import ProfessorDashboard from "./pages/ProfessorDashboard";
+import StudentDashboard from "./pages/student/StudentDashboard";
+import ProfessorDashboard from "./pages/professor/ProfessorDashboard";
 import ErrorPage from "./pages/ErrorPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -37,6 +37,8 @@ const App = () => {
       <Route path="/" element={<RootRedirect />} />
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+
+      {/* Student Routes */}
       <Route
         path="/student/dashboard"
         element={
@@ -45,6 +47,8 @@ const App = () => {
           </ProtectedRoute>
         }
       />
+
+      {/* Professor Routes */}
       <Route
         path="/professor/dashboard"
         element={
