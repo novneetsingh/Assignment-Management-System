@@ -40,6 +40,7 @@ export const getAllStudents = async (req, res) => {
   res.status(200).json({
     success: students ? true : false,
     message: students ? "Students found" : "Students not found",
+    count: students ? students.length : 0,
     data: students ? students : null,
   });
 };

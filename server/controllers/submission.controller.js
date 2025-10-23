@@ -103,6 +103,17 @@ export const confirmSubmission = async (req, res) => {
 
 // Get all submissions by assignment id
 export const getAllSubmissionsByAssignmentId = async (req, res) => {
+  // check if the assignment belongs to the current user
+  const assignment = await prisma.assignment.findFirst({
+    where: { id: req.params.assignmentId, creatorId: req.user.id },
+  });
+
+  if (!assignment)
+    throw new ErrorResponse(
+      "Assignment not found or you are not authorized",
+      404
+    );
+
   const submissions = await prisma.submission.findMany({
     where: { assignmentId: req.params.assignmentId },
     orderBy: {

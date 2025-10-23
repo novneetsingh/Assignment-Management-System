@@ -41,10 +41,10 @@ app.use("/users", userRoutes);
 
 // global error handling middleware
 app.use((err, req, res, next) => {
-  console.error(err);
+  console.error(err.message);
   res.status(err.statusCode || 500).json({
     success: false,
-    message: err || "Internal Server Error",
+    message: err.message || "Internal Server Error",
   });
 });
 

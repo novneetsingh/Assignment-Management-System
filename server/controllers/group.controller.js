@@ -20,18 +20,6 @@ export const createGroup = async (req, res) => {
         })),
       },
     },
-    include: {
-      members: {
-        include: {
-          user: {
-            select: {
-              name: true,
-              email: true,
-            },
-          },
-        },
-      },
-    },
   });
 
   res.status(201).json({

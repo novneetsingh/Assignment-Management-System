@@ -8,7 +8,7 @@ import { auth, isProfessor, isStudent } from "../middlewares/auth.js";
 
 const submissionRoutes = Router();
 
-// /submissions/
+// /submissions
 submissionRoutes.post("/", auth, isStudent, submitAssignment);
 
 // /submissions/confirm
@@ -16,7 +16,7 @@ submissionRoutes.patch("/confirm", auth, isProfessor, confirmSubmission);
 
 // /submissions/:assignmentId
 submissionRoutes.get(
-  ":assignmentId",
+  "/:assignmentId",
   auth,
   isProfessor,
   getAllSubmissionsByAssignmentId

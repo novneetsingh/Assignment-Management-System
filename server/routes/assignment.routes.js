@@ -23,9 +23,6 @@ assignmentRoutes.get("/analytics", auth, isProfessor, getAssignmentAnalytics);
 // /assignments
 assignmentRoutes.get("/", auth, isStudent, getAllAssignments);
 
-// /assignments/:assignmentId
-assignmentRoutes.get("/:assignmentId", auth, getAssignment);
-
 // /assignments/professor
 assignmentRoutes.get(
   "/professor",
@@ -33,5 +30,8 @@ assignmentRoutes.get(
   isProfessor,
   getAssignmentsByProfessor
 );
+
+// /assignments/:assignmentId
+assignmentRoutes.get("/:assignmentId", auth, getAssignment);
 
 export default assignmentRoutes;
