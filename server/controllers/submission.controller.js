@@ -119,6 +119,10 @@ export const getAllSubmissionsByAssignmentId = async (req, res) => {
     orderBy: {
       createdAt: "desc",
     },
+    include: {
+      user: true,
+      group: true,
+    },
   });
 
   res.status(200).json({

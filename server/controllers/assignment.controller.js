@@ -12,7 +12,7 @@ export const createAssignment = async (req, res) => {
     data: {
       title,
       description,
-      dueDate,
+      dueDate: new Date(dueDate + "T00:00:00.000Z"),
       oneDriveLink,
       creatorId: req.user.id,
     },
@@ -126,7 +126,7 @@ export const updateAssignment = async (req, res) => {
     data: {
       ...(title && { title }),
       ...(description && { description }),
-      ...(dueDate && { dueDate }),
+      ...(dueDate && { dueDate: new Date(dueDate + "T00:00:00.000Z") }),
       ...(oneDriveLink && { oneDriveLink }),
     },
   });

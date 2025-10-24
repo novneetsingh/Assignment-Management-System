@@ -19,11 +19,11 @@ const SubmissionForm = ({ assignment, groups, onSubmit, onCancel }) => {
             htmlFor="submitGroupId"
             className="block text-sm font-medium mb-1"
           >
-            Select Group <span className="text-red-500">*</span>
+            Select Group or Submit Individually
           </label>
           <select
             id="submitGroupId"
-            {...register("groupId", { required: "Please select a group" })}
+            {...register("groupId")}
             className={`w-full px-3 py-2 border rounded-md ${
               errors.groupId ? "border-red-500" : "border-gray-300"
             }`}

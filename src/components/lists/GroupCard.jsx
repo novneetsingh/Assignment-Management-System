@@ -8,24 +8,6 @@ const GroupCard = ({ group, currentUserId, onAddMember }) => {
       <p className="text-sm text-gray-500 mt-1">
         Created: {new Date(group.createdAt).toLocaleDateString()}
       </p>
-      <div className="mt-4">
-        <h4 className="font-medium mb-2">Members:</h4>
-        <div className="space-y-1">
-          {group.members && group.members.length > 0 ? (
-            group.members.map((member) => (
-              <div
-                key={member.user?.id || member.userId}
-                className="text-sm text-gray-600"
-              >
-                {member.user?.name || "Unknown User"} (
-                {member.user?.email || "No Email"})
-              </div>
-            ))
-          ) : (
-            <p className="text-sm text-gray-500">No members found.</p>
-          )}
-        </div>
-      </div>
       {group.creatorId === currentUserId && onAddMember && (
         <button
           onClick={() => onAddMember(group)}
